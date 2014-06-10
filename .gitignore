@@ -1,0 +1,5 @@
+# The product of python compilation/running
+*.pyc
+
+# Mac oddities
+.DS_Store
