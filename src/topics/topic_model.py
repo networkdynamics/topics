@@ -1,9 +1,11 @@
 import random
 
 class TopicModel:
-	def __init__(self, corpus, num_topics):
+	def __init__(self, corpus, num_topics, a, b):
 		self._corpus = corpus
 		self.num_topics = num_topics
+		self._alpha = a
+		self._beta = b
 
 		# A[i][j] is the topic assigned to the jth word of the ith document
 		self._topic_distributions = []
@@ -17,17 +19,17 @@ class TopicModel:
 		self._topic_counts_by_type = {}
 
 		# A[i] is the number of tokens with ith topic
-		self._topic_counts = [0 for i in range(num_topics)]
+		self._topic_counts = [num_topics * b for i in range(num_topics)]
 
 		for doc in corpus:
-			self._topic_counts_by_doc.append([0 for i in range(num_topics)])
-			self._topic_counts_by_doc[len(self._topic_counts_by_doc) - 1][0] = len(doc)
+			self._topic_counts_by_doc.append([a for i in range(num_topics)])
+			self._topic_counts_by_doc[len(self._topic_counts_by_doc) - 1][0] += len(doc)
 			self._topic_counts[0] += len(doc)
 
 			for tok in doc.tokens_iter():
 				if tok not in self._topic_counts_by_type:
-					self._topic_counts_by_type[tok] = [0 for i in range(num_topics)]
-					self._topic_counts_by_type[tok][0] = 1
+					self._topic_counts_by_type[tok] = [b for i in range(num_topics)]
+					self._topic_counts_by_type[tok][0] += 1
 				else:
 					self._topic_counts_by_type[tok][0] += 1
 
@@ -51,21 +53,9 @@ class TopicModel:
 				self._topic_counts[old_topic] -= 1
 
 				# Update the count by type
-				tpe = self._corpus.document(i).get_type_by_tidx(j)
+				tpe = self._corpus.document(i).get_type_by_token_idx(j)
 				self._topic_counts_by_type[tpe][new_topic] += 1
 				self._topic_counts_by_type[tpe][old_topic] -= 1
-
-	def get_topic(self, doc_idx, word_idx):
-		return self._topic_distributions[doc_idx][word_idx]
-
-	def count_topic_document(self, top_idx, doc_idx):
-		return self._topic_counts_by_doc[doc_idx][top_idx]
-
-	def count_topic_types(self, top_idx, tpe):
-		return self._topic_counts_by_type[tpe][top_idx]
-
-	def count_topic(self, top_idx):
-		return self._topic_counts[top_idx]
 
 	def set_topic(self, doc_idx, word_idx, topic, update_counts=True):
 		old_topic = self._topic_distributions[doc_idx][word_idx]
@@ -93,17 +83,52 @@ class TopicModel:
 		self._topic_counts_by_type[tpe][top_idx] += amt
 
 	# ============== Model-querying methods ==============
-	def describe_topic(self, top_idx):
-		# Return a list of words which contribute to the given topic 
-		# (in no particular order)
-		types = []
-		for tpe, topics in self._topic_counts_by_type.iteritems():
-			if topics[top_idx] > 0:
-				types.append(tpe)
 
-		return types
+	def get_topic(self, doc_idx, word_idx):
+		return self._topic_distributions[doc_idx][word_idx]
+
+	def count_topic_document(self, top_idx, doc_idx):
+		return self._topic_counts_by_doc[doc_idx][top_idx]
+
+	def count_topic_types(self, top_idx, tpe):
+		return self._topic_counts_by_type[tpe][top_idx]
+
+	def count_topic(self, top_idx):
+		return self._topic_counts[top_idx]
+
+	def count_all_topics_type(self, tpe):
+		return self._topic_counts_by_type[tpe]
+
+	def count_all_topics_document(self, doc_idx):
+		return self._topic_counts_by_doc[doc_idx]
+
+	def count_all_topics(self):
+		return self._topic_counts
 
 	def describe_document(self, doc_idx):
-		# Return a list of how all topics contribute to a document (in percent)
-		return [i / self.num_topics in self._topic_counts_by_doc[doc_idx]]
-		
+		# Returns a list of the percentages that each topic contributes to
+		# the given document.
+
+		sum_topics = 0
+		description = self._topic_counts_by_doc[doc_idx][:]
+		for i in range(len(description)):
+			description[i] = round(description[i] - self._alpha)
+			sum_topics += description[i]
+
+		return [i / sum_topics for i in description]
+
+	def describe_topic(self, top_idx):
+		# Returns a list of tuples, where the first field of a tuple is a word, 
+		# and the second field is how many times it receives the given topic 
+		# (sorted in descending order of this second field)
+
+		type_counts = {}
+		for tpe in self._topic_counts_by_type:
+			amt = round(self._topic_counts_by_type[tpe][top_idx] - self._beta)
+			if amt > 0:
+				if tpe not in type_counts:
+					type_counts[tpe] = amt
+				else:
+					type_counts[tpe] += amt
+
+		return sorted(type_counts.iteritems(), key=lambda i: i[1], reverse=True)

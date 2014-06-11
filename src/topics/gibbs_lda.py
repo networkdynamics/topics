@@ -13,37 +13,43 @@ def gibbs_lda(corpus, num_topics, **kwargs):
 	alpha = kwargs.pop("alpha", 50.0 / num_topics)
 	beta = kwargs.pop("beta", 0.1)
 
-	model = TopicModel(corpus, num_topics)
+	model = TopicModel(corpus, num_topics, alpha, beta)
 	model.random_topics()
 
 	p = np.empty(num_topics)
 
 	for iter_cnt in range(num_iterations):
-		
+		print iter_cnt
 		for d_idx in range(len(corpus)):
 			document = corpus.document(d_idx)
-			for type_idx in range(document.num_types()):
-				v = document.get_type_by_tidx(type_idx)
-				sampleTimes = document.count_type_(type_idx)
-				for i in range(sampleTimes):
-					token_idx = document.get_token_idx(i, type_idx)
-					topic = model.get_topic(d_idx, token_idx)
+			for token_idx in range(len(document)):
 
-					model.add_to_count_topic_document(-1, topic, d_idx)
-					model.add_to_count_topic_types(-1, topic, v)
-					model.add_to_topic_count(-1, topic)
+				tpe = document.get_type_by_token_idx(token_idx)
+				topic = model.get_topic(d_idx, token_idx)
+				model.add_to_count_topic_document(-1, topic, d_idx)
+				model.add_to_count_topic_types(-1, topic, tpe)
+				model.add_to_topic_count(-1, topic)
 
-					p[0] = compute_multinomial_step(model, 0, d_idx, v, alpha, beta)
-					for k in range(1, num_topics):
-						p[k] = (p[k - 1] + compute_multinomial_step(model, 
-								k, d_idx, v, alpha, beta))
-					x = np.random.uniform(high=p[num_topics - 1])
-					new_topic = np.searchsorted(p, x)
-					
-					model.set_topic(d_idx, token_idx, new_topic, False)
-					model.add_to_count_topic_document(1, new_topic, d_idx)
-					model.add_to_count_topic_types(1, new_topic, v)
-					model.add_to_topic_count(1, new_topic)
+				p = [i * j / float(k) for i, j, k in 
+							zip(model.count_all_topics_type(tpe),
+							model.count_all_topics_document(d_idx),
+							model.count_all_topics())]
+
+				s = sum(p)
+				for i in range(len(p)):
+					p[i] /= s	
+				
+				sample = np.random.multinomial(1, p)
+				new_topic = 0
+				for i in range(len(sample)):
+					if(sample[i] == 1): 
+						break
+					new_topic += 1
+
+				model.set_topic(d_idx, token_idx, new_topic, False)
+				model.add_to_count_topic_document(1, new_topic, d_idx)
+				model.add_to_count_topic_types(1, new_topic, tpe)
+				model.add_to_topic_count(1, new_topic)
 
 	return model
 					
