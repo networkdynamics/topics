@@ -12,26 +12,26 @@ class TopicModel:
 		for doc in corpus:
 			self._topic_distributions.append([0 for i in range(len(doc))])
 
-		# A[i][j] is the number of tokens with topic j in the ith document
+		# A[i,j] is the number of tokens with topic j in the ith document
 		self._topic_counts_by_doc = []
 
-		# A[tpe][i] is the number of tokens with given type and ith topic
-		self._topic_counts_by_type = {}
+		# A[i][j] is the number of tokens with topic j and type i across the corpus
+		self._topic_counts_by_type = []
 
 		# A[i] is the number of tokens with ith topic
 		self._topic_counts = [num_topics * b for i in range(num_topics)]
 
-		for doc in corpus:
+		for i in range(corpus.count_types()):
+			self._topic_counts_by_type.append([b for i in range(num_topics)])
+
+		for didx, doc in enumerate(corpus):
 			self._topic_counts_by_doc.append([a for i in range(num_topics)])
 			self._topic_counts_by_doc[len(self._topic_counts_by_doc) - 1][0] += len(doc)
 			self._topic_counts[0] += len(doc)
 
-			for tok in doc.tokens_iter():
-				if tok not in self._topic_counts_by_type:
-					self._topic_counts_by_type[tok] = [b for i in range(num_topics)]
-					self._topic_counts_by_type[tok][0] += 1
-				else:
-					self._topic_counts_by_type[tok][0] += 1
+			for tok_idx, tok in enumerate(doc):
+				tpe = corpus.get_type_idx_in_doc(didx, tok_idx)
+				self._topic_counts_by_type[tpe][0] += 1
 
 	# ============== Model-building methods ==============
 
@@ -53,7 +53,7 @@ class TopicModel:
 				self._topic_counts[old_topic] -= 1
 
 				# Update the count by type
-				tpe = self._corpus.document(i).get_type_by_token_idx(j)
+				tpe = self._corpus.get_type_idx_in_doc(i, j)
 				self._topic_counts_by_type[tpe][new_topic] += 1
 				self._topic_counts_by_type[tpe][old_topic] -= 1
 
@@ -68,7 +68,7 @@ class TopicModel:
 			self._topic_counts[topic] += 1
 			self._topic_counts[old_topic] -= 1
 
-			tpe = self._corpus.document(doc_idx).get_type_by_token_idx(word_idx)
+			tpe = self._corpus.get_type_idx_in_doc(i, j)
 			self._topic_counts_by_type[tpe][topic] += 1
 			self._topic_counts_by_type[tpe][old_topic] -= 1
 
@@ -79,8 +79,8 @@ class TopicModel:
 	def add_to_topic_count(self, amt, top_idx):
 		self._topic_counts[top_idx] += amt
 
-	def add_to_count_topic_types(self, amt, top_idx, tpe):
-		self._topic_counts_by_type[tpe][top_idx] += amt
+	def add_to_count_topic_types(self, amt, top_idx, type_idx):
+		self._topic_counts_by_type[type_idx][top_idx] += amt
 
 	# ============== Model-querying methods ==============
 
@@ -90,14 +90,14 @@ class TopicModel:
 	def count_topic_document(self, top_idx, doc_idx):
 		return self._topic_counts_by_doc[doc_idx][top_idx]
 
-	def count_topic_types(self, top_idx, tpe):
-		return self._topic_counts_by_type[tpe][top_idx]
+	def count_topic_types(self, top_idx, type_idx):
+		return self._topic_counts_by_type[type_idx][top_idx]
 
 	def count_topic(self, top_idx):
 		return self._topic_counts[top_idx]
 
-	def count_all_topics_type(self, tpe):
-		return self._topic_counts_by_type[tpe]
+	def count_all_topics_type(self, type_idx):
+		return self._topic_counts_by_type[type_idx]
 
 	def count_all_topics_document(self, doc_idx):
 		return self._topic_counts_by_doc[doc_idx]
@@ -123,9 +123,10 @@ class TopicModel:
 		# (sorted in descending order of this second field)
 
 		type_counts = {}
-		for tpe in self._topic_counts_by_type:
-			amt = round(self._topic_counts_by_type[tpe][top_idx] - self._beta)
+		for type_idx, counts in enumerate(self._topic_counts_by_type):
+			amt = round(counts[top_idx] - self._beta)
 			if amt > 0:
+				tpe = self._corpus.get_type(type_idx)
 				if tpe not in type_counts:
 					type_counts[tpe] = amt
 				else:

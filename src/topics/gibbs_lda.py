@@ -24,7 +24,7 @@ def gibbs_lda(corpus, num_topics, **kwargs):
 			document = corpus.document(d_idx)
 			for token_idx in range(len(document)):
 
-				tpe = document.get_type_by_token_idx(token_idx)
+				tpe = corpus.get_type_idx_in_doc(d_idx, token_idx)
 				topic = model.get_topic(d_idx, token_idx)
 				model.add_to_count_topic_document(-1, topic, d_idx)
 				model.add_to_count_topic_types(-1, topic, tpe)
