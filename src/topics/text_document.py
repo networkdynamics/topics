@@ -8,3 +8,8 @@ class TextDocument:
 	def __iter__(self):
 		for word in self._words:
 			yield word
+
+	def filter_type(self, tpe):	
+		for i, w in enumerate(self._words):
+			if tpe == w:
+				del self._words[i]
