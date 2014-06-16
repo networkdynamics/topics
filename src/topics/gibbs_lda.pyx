@@ -1,22 +1,34 @@
 from topic_model import TopicModel
+from corpus import Corpus
 
 import numpy as np
+cimport numpy as np
 
-def compute_multinomial_step(model, tidx, didx, tpe, a, b):
-	numerator = ((model.count_topic_document(tidx, didx) + a) *
+cdef compute_multinomial_step(model, int tidx, int didx, int tpe, float a, float b):
+	cdef:	
+		float numerator = ((model.count_topic_document(tidx, didx) + a) *
 				(model.count_topic_types(tidx, tpe) + b))
-	denominator = (model.count_topic(tidx) + model.num_topics * b)
+		float denominator = (model.count_topic(tidx) + model.num_topics * b)
 	return numerator / denominator
 
-def gibbs_lda(corpus, num_topics, **kwargs):
-	num_iterations = kwargs.pop("num_iterations", 1000)
-	alpha = kwargs.pop("alpha", 50.0 / num_topics)
-	beta = kwargs.pop("beta", 0.1)
+def gibbs_lda(corpus, int num_topics, **kwargs):
+
+	cdef:
+		int num_iterations = kwargs.pop("num_iterations", 1000)
+		float alpha = kwargs.pop("alpha", 50.0 / num_topics)
+		float beta = kwargs.pop("beta", 0.1)
+
+		# loop iterators
+		int iter_cnt, d_idx, token_idx, t, i
+
+		int topic, new_topic, tpe
+
+		np.ndarray[np.int_t] sample
+		np.ndarray[np.float_t] p = np.empty(num_topics, np.float_)
+
 
 	model = TopicModel(corpus, num_topics, alpha, beta)
-	model.random_topics()
-
-	p = np.empty(num_topics)
+	model.random_topics() 
 
 	for iter_cnt in range(num_iterations):
 		print iter_cnt
@@ -30,14 +42,12 @@ def gibbs_lda(corpus, num_topics, **kwargs):
 				model.add_to_count_topic_types(-1, topic, tpe)
 				model.add_to_topic_count(-1, topic)
 
-				p = [i * j / float(k) for i, j, k in 
-							zip(model.count_all_topics_type(tpe),
-							model.count_all_topics_document(d_idx),
-							model.count_all_topics())]
+				for t in range(num_topics):
+					p[t] = (model.count_all_topics_type(tpe)[t] * 
+							model.count_all_topics_document(d_idx)[t] /
+							float(model.count_all_topics()[t]))
 
-				s = sum(p)
-				for i in range(len(p)):
-					p[i] /= s	
+				p /= p.sum()
 				
 				sample = np.random.multinomial(1, p)
 				new_topic = 0

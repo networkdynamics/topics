@@ -34,7 +34,7 @@ class Corpus:
 		
 		for tpe, count in type_counts.iteritems():
 			if ((freq_high is not None and count > freq_high) or
-				(freq_low is not None and count < freq_low):
+				(freq_low is not None and count < freq_low)):
 				for doc in self._docs:
 					doc.filter_type(tpe)
 
