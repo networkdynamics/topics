@@ -4,14 +4,24 @@ from corpus import Corpus
 import numpy as np
 cimport numpy as np
 
-cdef compute_multinomial_step(model, int tidx, int didx, int tpe, float a, float b):
-	cdef:	
-		float numerator = ((model.count_topic_document(tidx, didx) + a) *
-				(model.count_topic_types(tidx, tpe) + b))
-		float denominator = (model.count_topic(tidx) + model.num_topics * b)
-	return numerator / denominator
-
 def gibbs_lda(corpus, int num_topics, **kwargs):
+	"""
+	Use Collapsed Gibbs Sampling to learn topics from a corpus, using the
+	Latent Dirichlet Allocation (LDA) model.
+
+	**Args**
+
+		* ``corpus``: the corpus for which to learn topics.
+		* ``num_topics``: the number of topics to be learned.
+
+	**Keyword Args**
+		* ``num_iterations [=1000]`` (int): the number of iterations of learning.
+		* ``alpha [=50/num_topics]`` (float): topics prior
+		* ``beta [=0.1]`` (float): words prior
+
+	**Returns**
+		A :py:module:TopicModel containing the topic assignments to the corpus.
+	"""
 
 	cdef:
 		int num_iterations = kwargs.pop("num_iterations", 1000)

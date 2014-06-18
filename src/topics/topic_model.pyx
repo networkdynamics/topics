@@ -4,8 +4,14 @@ cimport numpy as np
 
 import random
 
-
 cdef class TopicModel:
+	"""
+	A topic model for a particular corpus. This class should not be instantiated
+	directly, but rather obtained through a topic modelling algorithm. Various
+	methods are available to query the model on the topics assigned. When a
+	method takes a document index, it is the same as the index of this document
+	in the corpus associated to this model.
+	"""
 	def __init__(self, corpus, num_topics, a, b):
 		self._corpus = corpus
 		self.num_topics = num_topics
@@ -86,31 +92,58 @@ cdef class TopicModel:
 
 	# ============== Model-querying methods ==============
 
-	def get_topic(self, doc_idx, word_idx):
+	def get_topic(TopicModel self, int doc_idx, int word_idx):
+		"""
+		Obtain the topic currently associated to the word with index ``word_idx``
+		in the document with index ``doc_idx``.
+		"""
 		return self._topic_distributions[doc_idx][word_idx]
 
-	def count_topic_document(self, top_idx, doc_idx):
+	def count_topic_document(TopicModel self, int top_idx, int doc_idx):
+		"""
+		Count the number of words with topic index ``top_idx`` in the document 
+		with index ``doc_idx``.
+		"""
 		return self._topic_counts_by_doc[doc_idx, top_idx]
 
-	def count_topic_types(self, top_idx, type_idx):
+	def count_topic_types(TopicModel self, int top_idx, int type_idx):
+		"""
+		Count the number of words with topic index ``top_idx`` and type index 
+		``type_idx``.
+		"""
 		return self._topic_counts_by_type[type_idx, top_idx]
 
-	def count_topic(self, top_idx):
+	def count_topic(TopicModel self, int top_idx):
+		"""
+		Count the number of words with topic index ``top_idx`` across the corpus.
+		"""
 		return self._topic_counts[top_idx]
 
-	def count_all_topics_type(self, type_idx):
+	def count_all_topics_type(TopicModel self, int type_idx):
+		"""
+		Return a list of all the topic counts for the type with index 
+		``type_idx``. The list is indexed by topic index.
+		"""
 		return self._topic_counts_by_type[type_idx]
 
-	def count_all_topics_document(self, doc_idx):
+	def count_all_topics_document(TopicModel self, int doc_idx):
+		"""
+		Return a list of all the topic counts in the document with index 
+		``doc_idx``. The list is indexed by topic index.
+		"""
 		return self._topic_counts_by_doc[doc_idx]
 
 	def count_all_topics(self):
+		"""
+		Return a list of all the topic counts, indexed by topic index.
+		"""
 		return self._topic_counts
 
 	def describe_document(self, doc_idx):
-		# Returns a list of the percentages that each topic contributes to
-		# the given document.
-
+		"""
+		Returns a list of the percentages that each topic contributes to the 
+		document with document ``doc_idx``. The list is indexed by topic index.
+		"""
 		sum_topics = 0
 		description = self._topic_counts_by_doc[doc_idx,:]
 		for i in range(len(description)):
@@ -120,10 +153,11 @@ cdef class TopicModel:
 		return [i / sum_topics for i in description]
 
 	def describe_topic(self, top_idx):
-		# Returns a list of tuples, where the first field of a tuple is a word, 
-		# and the second field is how many times it receives the given topic 
-		# (sorted in descending order of this second field)
-
+		"""
+		Returns a list of tuples, where the first field of a tuple is a word, 
+		and the second field is how many times it receives the given topic 
+		(sorted in descending order of this second field).
+		"""
 		type_counts = {}
 		for type_idx in range(self._topic_counts_by_type.shape[0]):
 			counts = self._topic_counts_by_type[type_idx]
