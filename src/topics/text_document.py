@@ -33,10 +33,14 @@ class TextDocument:
 		for word in self._words:
 			yield word
 
-	def filter_type(self, tpe):	
+	def filter_type(self, excluded):	
 		"""
-		Exclude the word type ``tpe`` from the document.
+		Remove the word type ``excluded`` from the document.
 		"""
-		for i, w in enumerate(self._words):
-			if tpe == w:
-				del self._words[i]
+		self._words = [w for w in self._words if w != excluded]
+
+	def filter_types(self, excluded):
+		"""
+		Remove all the word types in the set ``excluded`` from the document.
+		"""
+		self._words = [w for w in self._words if w not in excluded]

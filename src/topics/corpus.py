@@ -3,6 +3,10 @@ class Corpus:
 	A collection of documents. Several methods are available for dealing with
 	types across all documents of the corpus.
 	"""
+
+	FILTER_FREQUENCY = object()
+	FILTER_COUNT = object()
+
 	def __init__(self, docs, **kwargs):
 		"""
 		**Args**
@@ -11,52 +15,76 @@ class Corpus:
 
 		**Keyword Args**
 
-			* ``filter_common [=None]`` (int): if a number, types which appear
-			more than ``filter_common`` times across the corpus will be removed 
-			from it.
-
-			* ``filter_uncommon [=None]`` (int): if a number, types which appear
-			less than ``filter_uncommon`` times across the corpus will be 
-			removed from it.
 		"""
-		self._docs = docs
 
-		filter_common = kwargs.pop("filter_common", None)
-		filter_uncommon = kwargs.pop("filter_uncommon", None)
-		self.__filter(filter_common, filter_uncommon)
+		filter_high = kwargs.pop("filter_high", None)
+		filter_low = kwargs.pop("filter_low", None)
+		filter_set = kwargs.pop("filter_set", None)
+
+		self._docs = docs
 
 		# A[i][j] is the type index for the jth token in the ith document
 		self._types = []
 
 		# A[i] is the type with index i
 		self._type_table = []
-		type_dict = {}
+
+		# A[tpe] is the index of type tpe
+		self._type_dict = {}
+
+		if filter_set is not None:
+			for doc in self._docs:
+				doc.filter_types(filter_set)
+
+		# A[tpe] is the count of type tpe across the corpus
+		self._type_counts = {}
+		for doc in self._docs:
+			for token in doc:
+				if token in self._type_counts:
+					self._type_counts[token] += 1
+				else:
+					self._type_counts[token] = 1
+
+		if filter_high is not None:
+			self.__filter_types(filter_high[0], filter_high[1], None)
+		if filter_low is not None:
+			self.__filter_types(filter_low[0], None, filter_low[1])
 
 		for didx, doc in enumerate(self._docs):
 			self._types.append([0 for i in range(len(doc))])
 			for tidx, token in enumerate(doc):
-				if token in type_dict:
-					self._types[didx][tidx] = type_dict[token]
+				if token in self._type_dict:
+					self._types[didx][tidx] = self._type_dict[token]
 				else:
 					idx = len(self._type_table)
-					type_dict[token] = idx
+					self._type_dict[token] = idx
 					self._types[didx][tidx] = idx
 					self._type_table.append(token)
 
-	def __filter(self, freq_high, freq_low):
-		type_counts = {}
-		for doc in self._docs:
-			for tok in doc:
-				if tok in type_counts:
-					type_counts[tok] += 1
-				else:
-					type_counts[tok] = 1
+	def __filter_types(self, filter_kind, high, low):
+
+		to_filter = set()
+
+		if filter_kind is Corpus.FILTER_COUNT:
+			for tpe, count in self._type_counts.iteritems():
+				if ((high is not None and count > high) or
+					(low is not None and count < low)):
+					to_filter.add(tpe)					
+		elif filter_kind is Corpus.FILTER_FREQUENCY:
+			type_list = sorted(self._type_counts.iteritems(), key=lambda i: i[1])
+			if low is not None:
+				for i in range(low):
+					to_filter.add(type_list[i][0])
+			if high is not None:
+				start = len(type_list) - 1
+				end = start - high
+				for i in range(start, end, -1):
+					to_filter.add(type_list[i][0])
+		else:
+			raise ValueError, "filter_kind must be Corpus.FILTER_COUNT or Corpus.Filter_FREQUENCY"
 		
-		for tpe, count in type_counts.iteritems():
-			if ((freq_high is not None and count > freq_high) or
-				(freq_low is not None and count < freq_low)):
-				for doc in self._docs:
-					doc.filter_type(tpe)
+		for doc in self._docs:
+			doc.filter_types(to_filter)
 
 	def __len__(self):
 		"""

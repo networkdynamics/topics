@@ -41,7 +41,6 @@ def gibbs_lda(corpus, int num_topics, **kwargs):
 	model.random_topics() 
 
 	for iter_cnt in range(num_iterations):
-		print iter_cnt
 		for d_idx in range(len(corpus)):
 			document = corpus.document(d_idx)
 			for token_idx in range(len(document)):
