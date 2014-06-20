@@ -43,7 +43,7 @@ cdef class TopicModel:
 
 	# ============== Model-building methods ==============
 
-	cpdef random_topics(self):
+	cpdef random_topics(TopicModel self):
 		for i in range(len(self._topic_distributions)):
 			doc_topics = self._topic_distributions[i]
 			for j in range(len(doc_topics)):
@@ -65,7 +65,7 @@ cdef class TopicModel:
 				self._topic_counts_by_type[tpe, new_topic] += 1
 				self._topic_counts_by_type[tpe, old_topic] -= 1
 
-	def set_topic(self, doc_idx, word_idx, topic, update_counts=True):
+	cpdef set_topic(TopicModel self, int doc_idx, int word_idx, int topic, update_counts=True):
 		old_topic = self._topic_distributions[doc_idx][word_idx]
 		self._topic_distributions[doc_idx][word_idx] = topic
 
@@ -81,59 +81,55 @@ cdef class TopicModel:
 			self._topic_counts_by_type[tpe, old_topic] -= 1
 
 
-	def add_to_count_topic_document(self, amt, top_idx, doc_idx):
-		self._topic_counts_by_doc[doc_idx, top_idx] += amt
-
-	def add_to_topic_count(self, amt, top_idx):
-		self._topic_counts[top_idx] += amt
-
-	def add_to_count_topic_types(self, amt, top_idx, type_idx):
+	cpdef add_to_counts(TopicModel self, int amt, int top_idx, int doc_idx, int type_idx):
+		self._topic_counts_by_doc[doc_idx, top_idx] += amt		
 		self._topic_counts_by_type[type_idx, top_idx] += amt
+		self._topic_counts[top_idx] += amt
 
 	# ============== Model-querying methods ==============
 
-	def get_topic(TopicModel self, int doc_idx, int word_idx):
+	cpdef int get_topic(TopicModel self, int doc_idx, int word_idx):
 		"""
 		Obtain the topic currently associated to the word with index ``word_idx``
 		in the document with index ``doc_idx``.
 		"""
 		return self._topic_distributions[doc_idx][word_idx]
 
-	def count_topic_document(TopicModel self, int top_idx, int doc_idx):
+	cpdef int count_topic_document(TopicModel self, int top_idx, int doc_idx):
 		"""
 		Count the number of words with topic index ``top_idx`` in the document 
 		with index ``doc_idx``.
 		"""
 		return self._topic_counts_by_doc[doc_idx, top_idx]
 
-	def count_topic_types(TopicModel self, int top_idx, int type_idx):
+	cpdef int count_topic_types(TopicModel self, int top_idx, int type_idx):
 		"""
 		Count the number of words with topic index ``top_idx`` and type index 
 		``type_idx``.
 		"""
 		return self._topic_counts_by_type[type_idx, top_idx]
 
-	def count_topic(TopicModel self, int top_idx):
+	cpdef int count_topic(TopicModel self, int top_idx):
 		"""
 		Count the number of words with topic index ``top_idx`` across the corpus.
 		"""
 		return self._topic_counts[top_idx]
 
-	def count_all_topics_type(TopicModel self, int type_idx):
+	cpdef count_all_topics_type(TopicModel self, int type_idx):
 		"""
 		Return a list of all the topic counts for the type with index 
 		``type_idx``. The list is indexed by topic index.
 		"""
 		return self._topic_counts_by_type[type_idx]
 
-	def count_all_topics_document(TopicModel self, int doc_idx):
+	cpdef count_all_topics_document(TopicModel self, int doc_idx):
 		"""
 		Return a list of all the topic counts in the document with index 
 		``doc_idx``. The list is indexed by topic index.
 		"""
 		return self._topic_counts_by_doc[doc_idx]
 
-	def count_all_topics(self):
+	cpdef count_all_topics(TopicModel self):
 		"""
 		Return a list of all the topic counts, indexed by topic index.
 		"""
