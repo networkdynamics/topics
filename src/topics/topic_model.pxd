@@ -3,8 +3,8 @@ cimport numpy as np
 cdef class TopicModel:
 	cdef object _corpus
 	cdef readonly int num_topics
-	cdef float _alpha
-	cdef float _beta
+	cdef readonly float alpha
+	cdef readonly float beta
 
 	cdef list _topic_distributions
 	cdef np.ndarray _topic_counts_by_doc

@@ -89,3 +89,86 @@ def gibbs_lda_learn(corpus, int num_topics, **kwargs):
 			update_document(corpus, model, d_idx, p)
 
 	return model
+
+def gibbs_lda_infer(document, TopicModel model, **kwargs):
+	"""
+	Use Gibbs sampling to infer the topic distribution of a document, based on
+	an existing LDA topic model.
+
+	**Args**
+
+		* ``document``: the document on which to infer the topics
+		* ``model``: the model used as a basis for the inference process
+
+	**Keyword Args**
+
+		* ``num_iterations [=25]`` (int): the number of iterations of inference.
+		* The same filtering parameters as those that can be passed to a corpus.
+
+	**Returns**
+		A :py:module:TopicModel containing the topic assignments for the new
+		document, which has index 0 in the model. Topic indices are the same as
+		with ``model``.
+	"""
+
+	num_iterations = kwargs.pop("num_iterations", 25)
+	fh = kwargs.pop("filter_high", None)
+	fl = kwargs.pop("filter_low", None)
+	fs = kwargs.pop("filter_set", None)
+	corpus = Corpus([document], filter_high=fh, filter_low=fl, filter_set=fs)
+	new_model = TopicModel(corpus, model.num_topics, model.alpha, model.beta)
+	new_model.random_topics()
+
+	cdef:
+		# Loop iterators
+		int token_idx, topic_idx, i, iter_cnt
+		
+		# Topic variables
+		int topic, new_topic, tpe
+
+		# The sample drawn from the multinomial distribution
+		np.ndarray[np.int_t] sample
+		np.ndarray[np.float_t] p = np.empty(model.num_topics, dtype=np.float_)
+		float p_sum
+
+		float old_by_type, old_all, new_by_type, new_by_doc, new_all
+		float by_type, by_doc, by_corpus
+
+	for iter_cnt in range(num_iterations):
+		for token_idx in range(len(document)):
+			tpe = corpus.get_type_idx_in_doc(0, token_idx)
+			topic = new_model.get_topic(0, token_idx)
+			new_model.add_to_counts(-1, topic, 0, tpe)
+
+			for topic_idx in range(new_model.num_topics):
+				# Check types in both corpora
+				by_type = (model._topic_counts_by_type[tpe, topic_idx] +
+							new_model._topic_counts_by_type[tpe, topic_idx])
+
+				# The new document is not part of the old corpus
+				by_doc = new_model._topic_counts_by_doc[0, topic_idx]
+
+				# new_model's corpus is just the one document
+				by_corpus = model._topic_counts[topic_idx] + by_doc
+
+				p[topic_idx] = (by_type * by_doc / by_corpus)
+
+			p_sum = 0.0
+			for topic_idx in range(new_model.num_topics):
+				p_sum += p[topic_idx]
+
+			for topic_idx in range(new_model.num_topics):
+				p[topic_idx] /= p_sum
+	
+			sample = np.random.multinomial(1, p)
+
+			new_topic = 0
+			for i in range(len(sample)):
+				if(sample[i] == 1): 
+					break
+				new_topic += 1
+
+			new_model.set_topic(0, token_idx, new_topic, False)
+			new_model.add_to_counts(1, new_topic, 0, tpe)
+
+	return new_model

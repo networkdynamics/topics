@@ -15,8 +15,8 @@ cdef class TopicModel:
 	def __init__(self, corpus, num_topics, a, b):
 		self._corpus = corpus
 		self.num_topics = num_topics
-		self._alpha = a
-		self._beta = b
+		self.alpha = a
+		self.beta = b
 
 		# A[i][j] is the topic assigned to the jth word of the ith document
 		self._topic_distributions = []
@@ -143,7 +143,7 @@ cdef class TopicModel:
 		sum_topics = 0
 		description = self._topic_counts_by_doc[doc_idx,:]
 		for i in range(len(description)):
-			description[i] = round(description[i] - self._alpha)
+			description[i] = round(description[i] - self.alpha)
 			sum_topics += description[i]
 
 		return [i / sum_topics for i in description]
@@ -157,7 +157,7 @@ cdef class TopicModel:
 		type_counts = {}
 		for type_idx in range(self._topic_counts_by_type.shape[0]):
 			counts = self._topic_counts_by_type[type_idx]
-			amt = round(counts[top_idx] - self._beta)
+			amt = round(counts[top_idx] - self.beta)
 			if amt > 0:
 				tpe = self._corpus.get_type(type_idx)
 				if tpe not in type_counts:
