@@ -9,4 +9,4 @@ A simple topic modelling tool. Its workflow is as follows:
 from text_document import TextDocument
 from corpus import Corpus
 from topic_model import TopicModel
-from gibbs_lda import gibbs_lda_learn
+from gibbs_lda import gibbs_lda_learn, gibbs_lda_infer

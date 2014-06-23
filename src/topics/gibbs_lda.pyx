@@ -84,7 +84,6 @@ def gibbs_lda_learn(corpus, int num_topics, **kwargs):
 	model.random_topics() 
 
 	for iter_cnt in range(num_iterations):
-		print iter_cnt
 		for d_idx in range(len(corpus)):
 			update_document(corpus, model, d_idx, p)
 
@@ -136,6 +135,7 @@ def gibbs_lda_infer(document, TopicModel model, **kwargs):
 
 	for iter_cnt in range(num_iterations):
 		for token_idx in range(len(document)):
+
 			tpe = corpus.get_type_idx_in_doc(0, token_idx)
 			topic = new_model.get_topic(0, token_idx)
 			new_model.add_to_counts(-1, topic, 0, tpe)
