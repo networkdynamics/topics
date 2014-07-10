@@ -24,14 +24,14 @@ cdef class TopicModel:
 			self._topic_distributions.append([0 for i in range(len(doc))])
 
 		# A[i,j] is the number of tokens with topic j in the ith document
-		self._topic_counts_by_doc = np.zeros((len(corpus), num_topics)) + a
+		self._topic_counts_by_doc = np.zeros((len(corpus), num_topics))
 
 		# A[i][j] is the number of tokens with topic j and type i across the corpus
-		self._topic_counts_by_type = np.zeros((corpus.count_types(), num_topics)) + b
+		self._topic_counts_by_type = np.zeros((corpus.count_types(), num_topics))
 
 		# A[i] is the number of tokens with ith topic
 		#self._topic_counts = [num_topics * b for i in range(num_topics)]
-		self._topic_counts = np.zeros(num_topics) + (num_topics * b)
+		self._topic_counts = np.zeros(num_topics)
 
 		for didx, doc in enumerate(corpus):
 			self._topic_counts_by_doc[didx, 0] += len(doc)
@@ -143,7 +143,6 @@ cdef class TopicModel:
 		sum_topics = 0
 		description = self._topic_counts_by_doc[doc_idx,:]
 		for i in range(len(description)):
-			description[i] = round(description[i] - self.alpha)
 			sum_topics += description[i]
 
 		return [i / sum_topics for i in description]
@@ -157,7 +156,7 @@ cdef class TopicModel:
 		type_counts = {}
 		for type_idx in range(self._topic_counts_by_type.shape[0]):
 			counts = self._topic_counts_by_type[type_idx]
-			amt = round(counts[top_idx] - self.beta)
+			amt = counts[top_idx]
 			if amt > 0:
 				tpe = self._corpus.get_type(type_idx)
 				if tpe not in type_counts:

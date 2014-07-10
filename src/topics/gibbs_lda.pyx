@@ -12,9 +12,8 @@ cdef update_document(corpus, TopicModel model, int d_idx, np.ndarray[np.float_t]
 		# Topic variables
 		int topic, new_topic, tpe
 
-		# The sample drawn from the multinomial distribution
-		np.ndarray[np.int_t] sample
-		float p_sum
+		float x
+		float by_doc, by_type, by_corpus
 
 	document = corpus.document(d_idx)
 	for token_idx in range(len(document)):
@@ -23,26 +22,22 @@ cdef update_document(corpus, TopicModel model, int d_idx, np.ndarray[np.float_t]
 		topic = model.get_topic(d_idx, token_idx)
 		model.add_to_counts(-1, topic, d_idx, tpe)
 
+		by_doc = model._topic_counts_by_type[tpe, 0] + model.beta
+		by_type = model._topic_counts_by_doc[d_idx, 0] + model.alpha
+		by_corpus = model._topic_counts[0] + (corpus.count_types() * model.beta)
+		p[0] = by_doc * by_type / by_corpus
 
+		for topic_idx in range(1, model.num_topics):
+			by_doc = model._topic_counts_by_type[tpe, topic_idx] + model.beta
+			by_type = model._topic_counts_by_doc[d_idx, topic_idx] + model.alpha
+			by_corpus = model._topic_counts[topic_idx] + (corpus.count_types() * model.beta)
 
-		for topic_idx in range(model.num_topics):
-			p[topic_idx] = (model._topic_counts_by_type[tpe, topic_idx] * 
-					model._topic_counts_by_doc[d_idx, topic_idx] /
-					model._topic_counts[topic_idx])
+			p[topic_idx] = p[topic_idx - 1] + (by_doc * by_type / by_corpus)
 
-		p_sum = 0.0
-		for topic_idx in range(model.num_topics):
-			p_sum += p[topic_idx]
-
-		for topic_idx in range(model.num_topics):
-			p[topic_idx] /= p_sum
-		
-
-		sample = np.random.multinomial(1, p)
-
+		x = np.random.uniform(0, p[model.num_topics - 1])
 		new_topic = 0
-		for i in range(len(sample)):
-			if(sample[i] == 1): 
+		for i in range(len(p)):
+			if(p[i] > x):
 				break
 			new_topic += 1
 
@@ -126,11 +121,8 @@ def gibbs_lda_infer(document, TopicModel model, **kwargs):
 		int topic, new_topic, tpe
 
 		# The sample drawn from the multinomial distribution
-		np.ndarray[np.int_t] sample
 		np.ndarray[np.float_t] p = np.empty(model.num_topics, dtype=np.float_)
-		float p_sum
 
-		float old_by_type, old_all, new_by_type, new_by_doc, new_all
 		float by_type, by_doc, by_corpus
 
 	for iter_cnt in range(num_iterations):
