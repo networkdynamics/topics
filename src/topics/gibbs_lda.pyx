@@ -132,31 +132,38 @@ def gibbs_lda_infer(document, TopicModel model, **kwargs):
 			topic = new_model.get_topic(0, token_idx)
 			new_model.add_to_counts(-1, topic, 0, tpe)
 
-			for topic_idx in range(new_model.num_topics):
-				# Check types in both corpora
+			# Check types in both corpora
+			by_type = (model._topic_counts_by_type[tpe, 0] +
+						new_model._topic_counts_by_type[tpe, 0] + 
+						model.beta)
+
+			# The new document is not part of the old corpus
+			by_doc = new_model._topic_counts_by_doc[0, 0] + model.alpha
+
+			# new_model's corpus is just the one document
+			by_corpus = (model._topic_counts[0] + 
+						new_model._topic_counts_by_doc[0, 0] + 
+						model._corpus.count_types() * model.beta)
+
+			p[0] = (by_doc * by_type / by_corpus)
+
+			for topic_idx in range(1, new_model.num_topics):
 				by_type = (model._topic_counts_by_type[tpe, topic_idx] +
-							new_model._topic_counts_by_type[tpe, topic_idx])
+						new_model._topic_counts_by_type[tpe, topic_idx] + 
+						model.beta)
 
-				# The new document is not part of the old corpus
-				by_doc = new_model._topic_counts_by_doc[0, topic_idx]
+				by_doc = new_model._topic_counts_by_doc[0, topic_idx] + model.alpha
 
-				# new_model's corpus is just the one document
-				by_corpus = model._topic_counts[topic_idx] + by_doc
+				by_corpus = (model._topic_counts[topic_idx] + 
+							new_model._topic_counts_by_doc[0, topic_idx] + 
+							model._corpus.count_types() * model.beta)
 
-				p[topic_idx] = (by_type * by_doc / by_corpus)
+				p[topic_idx] = p[topic_idx - 1] + (by_doc * by_type / by_corpus)
 
-			p_sum = 0.0
-			for topic_idx in range(new_model.num_topics):
-				p_sum += p[topic_idx]
-
-			for topic_idx in range(new_model.num_topics):
-				p[topic_idx] /= p_sum
-	
-			sample = np.random.multinomial(1, p)
-
+			x = np.random.uniform(0, p[model.num_topics - 1])
 			new_topic = 0
-			for i in range(len(sample)):
-				if(sample[i] == 1): 
+			for i in range(len(p)):
+				if(p[i] > x):
 					break
 				new_topic += 1
 
