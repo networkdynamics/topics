@@ -1,3 +1,6 @@
+import re
+from topics_exceptions import ParseException
+
 class Corpus:
 	"""
 	A collection of documents. Several methods are available for dealing with
@@ -32,23 +35,24 @@ class Corpus:
 		# A[tpe] is the index of type tpe
 		self._type_dict = {}
 
+		# A[tpe] is the count of type tpe across the corpus
+		self._type_counts = {}
+
 		if filter_set is not None:
 			for doc in self._docs:
 				doc.filter_types(filter_set)
 
-		# A[tpe] is the count of type tpe across the corpus
-		self._type_counts = {}
+		if filter_high is not None:
+			self.__filter_types(filter_high[0], filter_high[1], None)
+		if filter_low is not None:
+			self.__filter_types(filter_low[0], None, filter_low[1])
+
 		for doc in self._docs:
 			for token in doc:
 				if token in self._type_counts:
 					self._type_counts[token] += 1
 				else:
 					self._type_counts[token] = 1
-
-		if filter_high is not None:
-			self.__filter_types(filter_high[0], filter_high[1], None)
-		if filter_low is not None:
-			self.__filter_types(filter_low[0], None, filter_low[1])
 
 		for didx, doc in enumerate(self._docs):
 			self._types.append([0 for i in range(len(doc))])
@@ -98,6 +102,21 @@ class Corpus:
 		"""
 		for doc in self._docs:
 			yield doc
+
+	@staticmethod
+	def load(fobj):
+		pass
+
+	def save(self, fobj):
+		fobj.write("num_documents: %d\n" % len(self))
+		fobj.write("type_table: ")
+		for tpe in self._type_table:
+			fobj.write("%s " % tpe)
+		fobj.write("\ndocuments:\n")
+		for doc in self._types:
+			for tpe in doc:
+				fobj.write("%d " % tpe)
+			fobj.write("\n")
 
 	def document(self, idx):
 		"""

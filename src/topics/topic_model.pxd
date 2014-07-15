@@ -11,6 +11,8 @@ cdef class TopicModel:
 	cdef np.ndarray _topic_counts_by_type
 	cdef np.ndarray _topic_counts
 
+	cpdef save(TopicModel self, fobj)
+
 	cpdef random_topics(TopicModel self)
 	cpdef set_topic(TopicModel self, int doc_idx, int word_idx, int topic, update_counts=*)
 	cpdef add_to_counts(TopicModel self, int amt, int top_idx, int doc_idx, int type_idx)

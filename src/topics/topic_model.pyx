@@ -43,6 +43,21 @@ cdef class TopicModel:
 
 	# ============== Model-building methods ==============
 
+	@staticmethod
+	def load():
+		pass
+
+	cpdef save(TopicModel self, fobj):
+		self._corpus.save(fobj)
+		fobj.write("num_topics: %d\n" % self.num_topics)
+		fobj.write("alpha: %d\n" % self.alpha)
+		fobj.write("beta: %d\n" % self.beta)
+		fobj.write("topic_distribution:\n")
+		for doc_line in self._topic_distributions:
+			for topic in doc_line:
+				fobj.write("%d " % topic)
+			fobj.write("\n")
+
 	cpdef random_topics(TopicModel self):
 		for i in range(len(self._topic_distributions)):
 			doc_topics = self._topic_distributions[i]
