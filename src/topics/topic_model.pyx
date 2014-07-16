@@ -1,7 +1,10 @@
 from corpus import Corpus
+from topics_exceptions import ParseException
+
 import numpy as np
 cimport numpy as np
 
+import re
 import random
 
 cdef class TopicModel:
@@ -12,7 +15,7 @@ cdef class TopicModel:
 	method takes a document index, it is the same as the index of this document
 	in the corpus associated to this model.
 	"""
-	def __init__(self, corpus, num_topics, a, b):
+	def __init__(self, corpus, num_topics, a, b, **kwargs):
 		self._corpus = corpus
 		self.num_topics = num_topics
 		self.alpha = a
@@ -26,12 +29,15 @@ cdef class TopicModel:
 		# A[i,j] is the number of tokens with topic j in the ith document
 		self._topic_counts_by_doc = np.zeros((len(corpus), num_topics))
 
-		# A[i][j] is the number of tokens with topic j and type i across the corpus
+		# A[i,j] is the number of tokens with topic j and type i across the corpus
 		self._topic_counts_by_type = np.zeros((corpus.count_types(), num_topics))
 
 		# A[i] is the number of tokens with ith topic
 		#self._topic_counts = [num_topics * b for i in range(num_topics)]
 		self._topic_counts = np.zeros(num_topics)
+
+		if kwargs.pop("bypass_init", False):
+			return
 
 		for didx, doc in enumerate(corpus):
 			self._topic_counts_by_doc[didx, 0] += len(doc)
@@ -44,8 +50,46 @@ cdef class TopicModel:
 	# ============== Model-building methods ==============
 
 	@staticmethod
-	def load():
-		pass
+	def load(fobj):
+		corpus = Corpus.load(fobj)
+		
+		# TODO remove duplication around here
+		ln = fobj.readline().rstrip()
+		mobj = re.match(r"num_topics: (\d+)", ln)
+		if mobj is None:
+			raise ParseException, "Load model: missing number of topics"
+		num_topics = int(mobj.group(1))
+
+		ln = fobj.readline().rstrip()
+		mobj = re.match(r"alpha: (\d+)", ln)
+		if mobj is None:
+			raise ParseException, "Load model: missing alpha parameter"
+		alpha = float(mobj.group(1))
+
+		ln = fobj.readline().rstrip()
+		mobj = re.match(r"beta: (\d+)", ln)
+		if mobj is None:
+			raise ParseException, "Load model: missing beta parameter"
+		beta = float(mobj.group(1))
+
+		model = TopicModel(corpus, num_topics, alpha, beta, bypass_init=True)
+
+		ln = fobj.readline().rstrip()
+		if ln != "topic_distribution:":
+			raise ParseException, "Load model: missing topic distribution"
+
+		for i in range(len(corpus)):
+			topics = fobj.readline().rstrip().split(" ")
+			for tok_idx, topic in enumerate(topics):
+				if len(topic) == 0:
+					continue
+				top_idx = int(topic)
+				type_idx = corpus.get_type_idx_in_doc(i, tok_idx)
+
+				model._topic_distributions[i][tok_idx] = top_idx
+				model.add_to_counts(1, top_idx, i, type_idx)
+
+		return model
 
 	cpdef save(TopicModel self, fobj):
 		self._corpus.save(fobj)
