@@ -8,6 +8,8 @@ import re
 import random
 
 cdef class TopicModel:
+	
+
 	"""
 	A topic model for a particular corpus. This class should not be instantiated
 	directly, but rather obtained through a topic modelling algorithm. Various
@@ -16,6 +18,8 @@ cdef class TopicModel:
 	in the corpus associated to this model.
 	"""
 	def __init__(self, corpus, num_topics, a, b, **kwargs):
+		
+
 		self._corpus = corpus
 		self.num_topics = num_topics
 		self.alpha = a
@@ -27,14 +31,13 @@ cdef class TopicModel:
 			self._topic_distributions.append([0 for i in range(len(doc))])
 
 		# A[i,j] is the number of tokens with topic j in the ith document
-		self._topic_counts_by_doc = np.zeros((len(corpus), num_topics))
+		self._topic_counts_by_doc = np.zeros((len(corpus), num_topics), dtype=np.int_)
 
 		# A[i,j] is the number of tokens with topic j and type i across the corpus
-		self._topic_counts_by_type = np.zeros((corpus.count_types(), num_topics))
+		self._topic_counts_by_type = np.zeros((corpus.count_types(), num_topics), dtype=np.int_)
 
 		# A[i] is the number of tokens with ith topic
-		#self._topic_counts = [num_topics * b for i in range(num_topics)]
-		self._topic_counts = np.zeros(num_topics)
+		self._topic_counts = np.zeros(num_topics, dtype=np.int_)
 
 		if kwargs.pop("bypass_init", False):
 			return

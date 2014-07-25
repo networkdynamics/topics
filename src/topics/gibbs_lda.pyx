@@ -3,46 +3,7 @@ from corpus import Corpus
 
 import numpy as np
 cimport numpy as np
-
-cdef update_document(corpus, TopicModel model, int d_idx, np.ndarray[np.float_t] p):
-	cdef:
-		# Loop iterators
-		int token_idx, topic_idx, i
-		
-		# Topic variables
-		int topic, new_topic, tpe
-
-		float x
-		float by_doc, by_type, by_corpus
-
-	document = corpus.document(d_idx)
-	for token_idx in range(len(document)):
-
-		tpe = corpus.get_type_idx_in_doc(d_idx, token_idx)
-		topic = model.get_topic(d_idx, token_idx)
-		model.add_to_counts(-1, topic, d_idx, tpe)
-
-		by_doc = model._topic_counts_by_type[tpe, 0] + model.beta
-		by_type = model._topic_counts_by_doc[d_idx, 0] + model.alpha
-		by_corpus = model._topic_counts[0] + (corpus.count_types() * model.beta)
-		p[0] = by_doc * by_type / by_corpus
-
-		for topic_idx in range(1, model.num_topics):
-			by_doc = model._topic_counts_by_type[tpe, topic_idx] + model.beta
-			by_type = model._topic_counts_by_doc[d_idx, topic_idx] + model.alpha
-			by_corpus = model._topic_counts[topic_idx] + (corpus.count_types() * model.beta)
-
-			p[topic_idx] = p[topic_idx - 1] + (by_doc * by_type / by_corpus)
-
-		x = np.random.uniform(0, p[model.num_topics - 1])
-		new_topic = 0
-		for i in range(len(p)):
-			if(p[i] > x):
-				break
-			new_topic += 1
-
-		model.set_topic(d_idx, token_idx, new_topic, False)
-		model.add_to_counts(1, new_topic, d_idx, tpe)
+from cpython cimport bool
 
 def gibbs_lda_learn(corpus, int num_topics, **kwargs):
 	"""
@@ -67,20 +28,72 @@ def gibbs_lda_learn(corpus, int num_topics, **kwargs):
 		int num_iterations = kwargs.pop("num_iterations", 1000)
 		float alpha = kwargs.pop("alpha", 50.0 / num_topics)
 		float beta = kwargs.pop("beta", 0.1)
+		bool use_labels = kwargs.pop("use_labels", False)
+
+		TopicModel model = TopicModel(corpus, num_topics, alpha, beta)
 
 		# loop iterators
-		int iter_cnt, d_idx
+		unsigned int iter_cnt, d_idx, token_idx, topic_idx, i
+		
+		# Topic variables
+		int topic, new_topic, tpe
+		float x, by_doc, by_type, by_corpus
 
 		# Probability distribution (allocated here to avoid doing it for every token)
 		np.ndarray[np.float_t] p = np.empty(num_topics, np.float_)
 
-		TopicModel model = TopicModel(corpus, num_topics, alpha, beta)
+		# Typed arrays for fast access to the model
+		np.ndarray[np.int_t, ndim=2] _topic_counts_by_type = model._topic_counts_by_type
+		np.ndarray[np.int_t, ndim=2] _topic_counts_by_doc = model._topic_counts_by_doc
+		np.ndarray[np.int_t] _topic_counts = model._topic_counts
+
+
 
 	model.random_topics() 
 
 	for iter_cnt in range(num_iterations):
 		for d_idx in range(len(corpus)):
-			update_document(corpus, model, d_idx, p)
+			document = corpus.document(d_idx)
+			for token_idx in range(len(document)):
+
+				tpe = corpus.get_type_idx_in_doc(d_idx, token_idx)
+				topic = model.get_topic(d_idx, token_idx)
+				model.add_to_counts(-1, topic, d_idx, tpe)
+
+				#by_type = _topic_counts_by_type[tpe, 0] + model.beta
+				#by_doc = _topic_counts_by_doc[d_idx, 0] + model.alpha
+				#by_corpus = _topic_counts[0] + (corpus.count_types() * model.beta)
+				#p[0] = by_doc * by_type / by_corpus
+
+				p_sum = 0.0
+				for topic_idx in range(model.num_topics):
+					by_type = _topic_counts_by_type[tpe, topic_idx] + model.beta
+					by_doc = _topic_counts_by_doc[d_idx, topic_idx] + model.alpha
+					by_corpus = _topic_counts[topic_idx] + (corpus.count_types() * model.beta)
+
+					#p[topic_idx] = p[topic_idx - 1] + (by_doc * by_type / by_corpus)
+					p[topic_idx] = by_doc * by_type / by_corpus
+					p_sum += p[topic_idx]
+				
+				for i in range(len(p)):
+					p[i] /= p_sum
+
+				new_topic = 0
+				res = np.random.multinomial(1, p)
+				for i in range(len(res)):
+					if res[i] == 1:
+						break
+					new_topic += 1
+
+				#x = np.random.uniform(0, p[model.num_topics - 1])
+				#new_topic = -1
+				#for i in range(len(p)):
+				#	new_topic += 1
+				#	if(p[i] > x):
+				#		break
+
+				model.set_topic(d_idx, token_idx, new_topic, False)
+				model.add_to_counts(1, new_topic, d_idx, tpe)
 
 	return model
 

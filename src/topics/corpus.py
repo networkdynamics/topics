@@ -13,12 +13,30 @@ class Corpus:
 
 	def __init__(self, docs, **kwargs):
 		"""
+		Create a corpus, based on a list of documents. Documents can have their
+		words filtered. By using frequency filtering (Corpus.FILTER_FREQUENCY),
+		the most or least frequent words can be removed. By using count filtering
+		(Corpus.FILTER_COUNT), counts that appear more (or less) than a certain
+		number can be removed.
+
 		**Args**
 
 			* ``docs``: the list of documents that this corpus should contain.
 
 		**Keyword Args**
 
+			* ``filter_high[=None]``: a tuple used to filter words that appear
+			too many times, or are among the most frequent. The first element of
+			the tuple is either Corpus.FILTER_FREQUENCY or Corpus.FILTER_COUNT,
+			and the second element is a number.
+
+			* ``filter_low[=None]``: a tuple used to filter words that appear
+			not enough times, or are among the least frequent. The first element
+			of the tuple is either Corpus.FILTER_FREQUENCY or Corpus.FILTER_COUNT,
+			and the second element is a number.
+
+			* ``filter_set[=None]``: a set containing words to be filtered from
+			the corpus.
 		"""
 
 		bypass_init = kwargs.pop("bypass_init", False)
@@ -42,6 +60,12 @@ class Corpus:
 		# A[i] is the document with index i
 		self._docs = []
 
+		# A[lbl] is the index of label lbl
+		self._label_dict = {}
+
+		# A[i][j] is a 1 if document i has label j, 0 otherwise
+		self._labels_by_doc = []
+
 		if bypass_init:
 			return
 
@@ -51,11 +75,6 @@ class Corpus:
 			for doc in self._docs:
 				doc.filter_types(filter_set)
 
-		if filter_high is not None:
-			self.__filter_types(filter_high[0], filter_high[1], None)
-		if filter_low is not None:
-			self.__filter_types(filter_low[0], None, filter_low[1])
-
 		for doc in self._docs:
 			for token in doc:
 				if token in self._type_counts:
@@ -63,8 +82,20 @@ class Corpus:
 				else:
 					self._type_counts[token] = 1
 
+		if filter_high is not None:
+			self.__filter_types(filter_high[0], filter_high[1], None)
+		if filter_low is not None:
+			self.__filter_types(filter_low[0], None, filter_low[1])
+
+		label_idx = 0
 		for didx, doc in enumerate(self._docs):
+			for lbl in doc.iterlabels():
+				if lbl not in self._label_dict:
+					self._label_dict[lbl] = label_idx
+					label_idx += 1
+
 			self._types.append([0 for i in range(len(doc))])
+
 			for tidx, token in enumerate(doc):
 				if token in self._type_dict:
 					self._types[didx][tidx] = self._type_dict[token]
@@ -73,6 +104,12 @@ class Corpus:
 					self._type_dict[token] = idx
 					self._types[didx][tidx] = idx
 					self._type_table.append(token)
+
+		for didx, doc in enumerate(self._docs):
+			self._labels_by_doc.append([0 for i in range(len(self._label_dict))])
+			for lbl in doc.iterlabels():
+				self._labels_by_doc[didx][self._label_dict[lbl]] = 1
+			
 
 	def __filter_types(self, filter_kind, high, low):
 
@@ -120,6 +157,13 @@ class Corpus:
 			self._type_table.append(tpe)
 			self._type_dict[tpe] = idx
 
+	def __load_labels(self, table):
+		types = table.split(" ")[1:]
+		for idx, lbl in enumerate(types):
+			if len(lbl) == 0:
+				continue
+			self._label_dict[tpe] = lbl
+
 	@staticmethod
 	def load(fobj):
 		ln = fobj.readline().rstrip()
@@ -138,9 +182,16 @@ class Corpus:
 		corpus.__load_types(ln)
 
 		ln = fobj.readline().rstrip()
-		mobj = re.match(r"documents:", ln)
+		mobj = re.match(r"label_table:", ln)
 		if mobj is None:
-			raise ParseException, "Load corpus: missing documents"
+			raise ParseException, "Load corpus: missing label table"
+
+		corpus.__load_labels(ln)
+
+		ln = fobj.readline().rstrip()
+		mobj = re.match(r"types:", ln)
+		if mobj is None:
+			raise ParseException, "Load corpus: missing types"
 
 		for i in range(num_documents):
 			doc_words = fobj.readline().rstrip().split(" ")
@@ -155,6 +206,19 @@ class Corpus:
 					corpus._type_counts[doc_word] = 1
 			corpus._docs.append(doc)
 
+		ln = fobj.readline().rstrip()
+		mobj = re.match(r"labels:", ln)
+		if mobj is None:
+			raise ParseException, "Load corpus: missing labels"
+
+		for i in range(num_documents):
+			doc_lbls = map(lambda i: int(i), fobj.readline().rstrip().split(" ")])
+			corpus._labels_by_doc.append([])
+			for lbl_idx, has_lbl in enumerate(doc_lbls):
+				corpus._labels_by_doc[i].append(has_lbl)
+				if has_lbl == 1:
+					corpus.document(i).add_label(corpus._label_dict(lbl_idx))
+
 		return corpus
 
 	def save(self, fobj):
@@ -162,10 +226,18 @@ class Corpus:
 		fobj.write("type_table: ")
 		for tpe in self._type_table:
 			fobj.write("%s " % tpe)
-		fobj.write("\ndocuments:\n")
+		fobj.write("\nlabel_table: ")
+		for lbl in sorted(self._label_dict.iteritems(), key=lambda i: i[1]):
+			fobj.write("%s " % lbl)
+		fobj.write("\ntypes:\n")
 		for doc in self._types:
 			for tpe in doc:
 				fobj.write("%d " % tpe)
+			fobj.write("\n")
+		fobj.write("labels:\n")
+		for doc in self._labels_by_doc:
+			for lbl in doc:
+				fobj.write("%d " %lbl)
 			fobj.write("\n")
 
 	def document(self, idx):

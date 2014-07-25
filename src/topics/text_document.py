@@ -3,11 +3,12 @@ class TextDocument:
 	A simple document containing text.
 	"""
 
-	def __init__(self, text, **kwargs):
+	def __init__(self, text, labels=set(), **kwargs):
 		"""
 		**Args**
 
 			* ``text``: a string containing the text for this document.
+			* ``labels``: a set containing the labels for this document.
 		
 		**Keyword args**
 
@@ -19,6 +20,7 @@ class TextDocument:
 			text = text.lower()
 
 		self._words = text.split()
+		self._labels = labels
 
 	def __len__(self):
 		"""
@@ -32,6 +34,24 @@ class TextDocument:
 		"""
 		for word in self._words:
 			yield word
+
+	def iterlabels(self):
+		"""
+		Iterates through labels applied to the document.
+		"""
+		return iter(self._labels)
+
+	def has_label(self, lbl):
+		"""
+		Returns whether this document is labelled with ``lbl``.
+		"""
+		return lbl in self._labels
+
+	def add_label(self, lbl):
+		"""
+		Adds the label ``lbl`` to this document.
+		"""
+		self._labels.add(lbl)
 
 	def filter_type(self, excluded):	
 		"""
