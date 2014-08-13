@@ -5,7 +5,7 @@ import numpy as np
 cimport numpy as np
 from cpython cimport bool
 
-def gibbs_lda_learn(corpus, int num_topics, **kwargs):
+def gibbs_lda_learn(corpus, bool use_labels, **kwargs):
 	"""
 	Use Collapsed Gibbs Sampling to learn topics from a corpus, using the
 	Latent Dirichlet Allocation (LDA) model.
@@ -26,9 +26,9 @@ def gibbs_lda_learn(corpus, int num_topics, **kwargs):
 
 	cdef:
 		int num_iterations = kwargs.pop("num_iterations", 1000)
-		float alpha = kwargs.pop("alpha", 50.0 / num_topics)
+		float alpha = kwargs.pop("alpha", 0.1)
 		float beta = kwargs.pop("beta", 0.1)
-		bool use_labels = kwargs.pop("use_labels", False)
+		int num_topics = corpus.count_labels() if use_labels else kwargs.pop("num_topics", 30)
 
 		TopicModel model = TopicModel(corpus, num_topics, alpha, beta)
 
@@ -49,7 +49,7 @@ def gibbs_lda_learn(corpus, int num_topics, **kwargs):
 
 
 
-	model.random_topics() 
+	model.random_topics(use_labels) 
 
 	for iter_cnt in range(num_iterations):
 		for d_idx in range(len(corpus)):
@@ -59,11 +59,6 @@ def gibbs_lda_learn(corpus, int num_topics, **kwargs):
 				tpe = corpus.get_type_idx_in_doc(d_idx, token_idx)
 				topic = model.get_topic(d_idx, token_idx)
 				model.add_to_counts(-1, topic, d_idx, tpe)
-
-				#by_type = _topic_counts_by_type[tpe, 0] + model.beta
-				#by_doc = _topic_counts_by_doc[d_idx, 0] + model.alpha
-				#by_corpus = _topic_counts[0] + (corpus.count_types() * model.beta)
-				#p[0] = by_doc * by_type / by_corpus
 
 				p_sum = 0.0
 				for topic_idx in range(model.num_topics):
@@ -84,13 +79,6 @@ def gibbs_lda_learn(corpus, int num_topics, **kwargs):
 					if res[i] == 1:
 						break
 					new_topic += 1
-
-				#x = np.random.uniform(0, p[model.num_topics - 1])
-				#new_topic = -1
-				#for i in range(len(p)):
-				#	new_topic += 1
-				#	if(p[i] > x):
-				#		break
 
 				model.set_topic(d_idx, token_idx, new_topic, False)
 				model.add_to_counts(1, new_topic, d_idx, tpe)
@@ -124,7 +112,7 @@ def gibbs_lda_infer(document, TopicModel model, **kwargs):
 	fs = kwargs.pop("filter_set", None)
 	corpus = Corpus([document], filter_high=fh, filter_low=fl, filter_set=fs)
 	new_model = TopicModel(corpus, model.num_topics, model.alpha, model.beta)
-	new_model.random_topics()
+	new_model.random_topics(False)
 
 	cdef:
 		# Loop iterators
