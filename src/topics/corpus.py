@@ -63,6 +63,9 @@ class Corpus:
 		# A[lbl] is the index of label lbl
 		self._label_dict = {}
 
+		# A[i] is the label with index i
+		self._label_table = []
+
 		# A[i][j] is a 1 if document i has label j, 0 otherwise
 		self._labels_by_doc = []
 
@@ -91,6 +94,7 @@ class Corpus:
 		for didx, doc in enumerate(self._docs):
 			for lbl in doc.iterlabels():
 				if lbl not in self._label_dict:
+					self._label_table.append(lbl)
 					self._label_dict[lbl] = label_idx
 					label_idx += 1
 
@@ -162,7 +166,8 @@ class Corpus:
 		for idx, lbl in enumerate(types):
 			if len(lbl) == 0:
 				continue
-			self._label_dict[tpe] = lbl
+			self._label_dict[idx] = lbl
+			self._label_table.append(lbl)
 
 	@staticmethod
 	def load(fobj):
@@ -212,7 +217,7 @@ class Corpus:
 			raise ParseException, "Load corpus: missing labels"
 
 		for i in range(num_documents):
-			doc_lbls = map(lambda i: int(i), fobj.readline().rstrip().split(" ")])
+			doc_lbls = map(lambda i: int(i), fobj.readline().rstrip().split(" "))
 			corpus._labels_by_doc.append([])
 			for lbl_idx, has_lbl in enumerate(doc_lbls):
 				corpus._labels_by_doc[i].append(has_lbl)
@@ -240,6 +245,12 @@ class Corpus:
 				fobj.write("%d " %lbl)
 			fobj.write("\n")
 
+	def iter_types_doc(self, didx):
+		"""
+		Iterate through the type indices of the document with index ``didx``.
+		"""
+		return iter(set(self._types[didx]))
+
 	def document(self, idx):
 		"""
 		Return the document with index ``idx``.
@@ -264,3 +275,34 @@ class Corpus:
 		Obtain the type with type index ``type_idx``
 		"""
 		return self._type_table[type_idx]
+
+	def get_type_idx(self, tpe):
+		"""
+		Obtain the type index of the type ``tpe``.
+		"""
+		return self._type_dict[tpe]
+
+	def count_labels(self):
+		"""
+		Return the number of distinct labels in this corpus.
+		"""
+		return len(self._label_dict)
+
+	def get_label(self, lidx):
+		"""
+		Return the label with the index ``lidx``.
+		"""
+		return self._label_table[lidx]
+
+	def get_label_idx(self, label):
+		"""
+		Return the label index corresponding to ``label``.
+		"""
+		return self._label_dict[label]
+
+	def document_has_label(didx, lidx):
+		"""
+		Return whether the document with index ``didx`` is labelled with label
+		having index ``lidx``.
+		"""
+		return self._labels_by_doc[didx][lidx] == 1

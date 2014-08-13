@@ -8,8 +8,6 @@ import re
 import random
 
 cdef class TopicModel:
-	
-
 	"""
 	A topic model for a particular corpus. This class should not be instantiated
 	directly, but rather obtained through a topic modelling algorithm. Various
@@ -17,8 +15,8 @@ cdef class TopicModel:
 	method takes a document index, it is the same as the index of this document
 	in the corpus associated to this model.
 	"""
+
 	def __init__(self, corpus, num_topics, a, b, **kwargs):
-		
 
 		self._corpus = corpus
 		self.num_topics = num_topics
@@ -105,12 +103,21 @@ cdef class TopicModel:
 				fobj.write("%d " % topic)
 			fobj.write("\n")
 
-	cpdef random_topics(TopicModel self):
+	cpdef random_topics(TopicModel self, bool use_labels):
 		for i in range(len(self._topic_distributions)):
 			doc_topics = self._topic_distributions[i]
 			for j in range(len(doc_topics)):
 				# Update the topic assignment
-				new_topic = random.randrange(self.num_topics)
+
+				if use_labels:
+					doc = self._corpus.document(i)
+					x = random.randrange(doc.count_labels())
+					for i, lbl in enumerate(doc.iterlabels()):
+						if i == x:
+							new_topic = self._corpus.get_label_idx(lbl)
+							break
+				else:
+					new_topic = random.randrange(self.num_topics)
 				old_topic = doc_topics[j]
 				doc_topics[j] = new_topic
 
@@ -202,7 +209,7 @@ cdef class TopicModel:
 		Returns a list of the percentages that each topic contributes to the 
 		document with document ``doc_idx``. The list is indexed by topic index.
 		"""
-		sum_topics = 0
+		sum_topics = 0.0
 		description = self._topic_counts_by_doc[doc_idx,:]
 		for i in range(len(description)):
 			sum_topics += description[i]
