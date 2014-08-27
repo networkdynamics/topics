@@ -6,10 +6,18 @@ class Corpus:
 	"""
 	A collection of documents. Several methods are available for dealing with
 	types across all documents of the corpus.
+
+	# TODO: Expand on the point of this class.
+
+	# TODO: Mention that serialization is possible
+
+	# TODO: Replace all count_ with num_
+
+	# TODO: Explain why type access through the corpus is different than through individual documents.
 	"""
 
-	FILTER_FREQUENCY = object()
-	FILTER_COUNT = object()
+	FILTER_FREQUENCY = 'FILTER_FREQUENCY'
+	FILTER_COUNT = 'FILTER_COUNT' 
 
 	def __init__(self, docs, **kwargs):
 		"""
@@ -18,6 +26,8 @@ class Corpus:
 		the most or least frequent words can be removed. By using count filtering
 		(Corpus.FILTER_COUNT), counts that appear more (or less) than a certain
 		number can be removed.
+
+		# TODO: In the discussion, clarify the relationship between words and types
 
 		**Args**
 
@@ -171,6 +181,9 @@ class Corpus:
 
 	@staticmethod
 	def load(fobj):
+		"""
+		# TODO: Document this
+		"""
 		ln = fobj.readline().rstrip()
 		mobj = re.match(r"num_documents: (\d+)", ln)
 		if mobj is None:
@@ -227,6 +240,9 @@ class Corpus:
 		return corpus
 
 	def save(self, fobj):
+		"""
+		TODO: Document
+		"""
 		fobj.write("num_documents: %d\n" % len(self))
 		fobj.write("type_table: ")
 		for tpe in self._type_table:

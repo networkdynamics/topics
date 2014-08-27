@@ -14,6 +14,10 @@ cdef class TopicModel:
 	methods are available to query the model on the topics assigned. When a
 	method takes a document index, it is the same as the index of this document
 	in the corpus associated to this model.
+
+	TODO: revise for readability
+
+	TODO: Highlight serialization ability
 	"""
 
 	def __init__(self, corpus, num_topics, a, b, **kwargs):
@@ -40,6 +44,8 @@ cdef class TopicModel:
 		if kwargs.pop("bypass_init", False):
 			return
 
+		# TODO: Check for extra kw args
+
 		for didx, doc in enumerate(corpus):
 			self._topic_counts_by_doc[didx, 0] += len(doc)
 			self._topic_counts[0] += len(doc)
@@ -52,6 +58,9 @@ cdef class TopicModel:
 
 	@staticmethod
 	def load(fobj):
+		"""
+		TODO: Document
+		"""
 		corpus = Corpus.load(fobj)
 		
 		# TODO remove duplication around here
@@ -93,6 +102,9 @@ cdef class TopicModel:
 		return model
 
 	cpdef save(TopicModel self, fobj):
+		"""
+		TODO: Document this
+		"""
 		self._corpus.save(fobj)
 		fobj.write("num_topics: %d\n" % self.num_topics)
 		fobj.write("alpha: %d\n" % self.alpha)
@@ -221,6 +233,9 @@ cdef class TopicModel:
 		Returns a list of tuples, where the first field of a tuple is a word, 
 		and the second field is how many times it receives the given topic 
 		(sorted in descending order of this second field).
+
+		# TODO: Revise so the default behavior gives frequencies for each word.
+		#   the kwargument normalized=False returns counts.
 		"""
 		type_counts = {}
 		for type_idx in range(self._topic_counts_by_type.shape[0]):

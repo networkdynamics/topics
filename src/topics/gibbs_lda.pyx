@@ -1,3 +1,7 @@
+"""
+TODO: Preamble highlighting the method and a citation.
+"""
+
 from topic_model cimport TopicModel
 from corpus import Corpus
 
@@ -7,6 +11,8 @@ from cpython cimport bool
 
 def gibbs_lda_learn(corpus, bool use_labels, **kwargs):
 	"""
+	# TODO: Update
+
 	Use Collapsed Gibbs Sampling to learn topics from a corpus, using the
 	Latent Dirichlet Allocation (LDA) model.
 
@@ -29,6 +35,8 @@ def gibbs_lda_learn(corpus, bool use_labels, **kwargs):
 		float alpha = kwargs.pop("alpha", 0.1)
 		float beta = kwargs.pop("beta", 0.1)
 		int num_topics = corpus.count_labels() if use_labels else kwargs.pop("num_topics", 30)
+
+		# TODO: Check for extra kwargs
 
 		TopicModel model = TopicModel(corpus, num_topics, alpha, beta)
 
@@ -104,12 +112,17 @@ def gibbs_lda_infer(document, TopicModel model, **kwargs):
 		A :py:module:TopicModel containing the topic assignments for the new
 		document, which has index 0 in the model. Topic indices are the same as
 		with ``model``.
+
+	# TODO: Change the output to a list of probabilities (for each topic in the input model)
 	"""
 
 	num_iterations = kwargs.pop("num_iterations", 25)
 	fh = kwargs.pop("filter_high", None)
 	fl = kwargs.pop("filter_low", None)
 	fs = kwargs.pop("filter_set", None)
+
+	# TODO: Check for extra kw args
+
 	corpus = Corpus([document], filter_high=fh, filter_low=fl, filter_set=fs)
 	new_model = TopicModel(corpus, model.num_topics, model.alpha, model.beta)
 	new_model.random_topics(False)

@@ -1,6 +1,10 @@
 class TextDocument:
 	"""
-	A simple document containing text.
+	This class encapuslates the information contained in a text document such that it can be directly
+	used by an .... # TODO
+
+	TODO: Clarify the features of the document (in particular, types and labels)
+	TODO: Change all count_ methods to num_ 
 	"""
 
 	def __init__(self, text, labels=set(), **kwargs):
@@ -18,6 +22,8 @@ class TextDocument:
 		to_lower = kwargs.pop("to_lower", False)
 		if to_lower:
 			text = text.lower()
+
+		# TODO: Check for extra keywords
 
 		self._words = text.split()
 		self._labels = labels
@@ -47,6 +53,8 @@ class TextDocument:
 	def iterlabels(self):
 		"""
 		Iterate through labels applied to the document.
+
+		TODO: rename to iter_labels
 		"""
 		return iter(self._labels)
 
@@ -96,7 +104,7 @@ class TextDocument:
 
 	def filter_types(self, excluded):
 		"""
-		Remove all the word types in the set ``excluded`` from the document.
+		Remove all the word types in the iterable ``excluded`` from the document.
 		"""
 		self._words = [w for w in self._words if w not in excluded]
 		for tpe in excluded:		
